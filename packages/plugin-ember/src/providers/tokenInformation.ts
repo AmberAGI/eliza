@@ -6,7 +6,7 @@ const tokenInformationProvider: Provider = {
     get: async (runtime: AgentRuntime, message: Memory) => {
         return await askEmber(
             message.userId,
-            message.content.text,
+            `Give information around this market query: ${message.content.text}`,
             getApiKey(runtime)
         );
     },
