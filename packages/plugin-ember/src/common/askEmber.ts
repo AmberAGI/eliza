@@ -54,6 +54,8 @@ export default async function (
                 return response.message;
             case "error":
                 return `Error: ${response.message}`;
+            case "activity":
+                continue;
             default:
                 throw new Error("Invalid response");
         }
