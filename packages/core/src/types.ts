@@ -622,6 +622,7 @@ export type Character = {
         discordVoiceHandlerTemplate?: string;
         discordShouldRespondTemplate?: string;
         discordMessageHandlerTemplate?: string;
+        imagePromptTemplate?: string;
     };
 
     /** Character biography */
