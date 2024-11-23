@@ -84,23 +84,23 @@ export async function loadCharacters(
             try {
                 const character = JSON.parse(fs.readFileSync(path, "utf8"));
 
-                validateCharacterConfig(character);
-
                 // is there a "plugins" field?
                 if (character.plugins) {
-                    console.log("Plugins are: ", character.plugins);
+                    elizaLogger.log("Plugins are: ", character.plugins);
 
                     const importedPlugins = await Promise.all(
                         character.plugins.map(async (plugin) => {
                             // if the plugin name doesnt start with @eliza,
 
                             const importedPlugin = await import(plugin);
-                            return importedPlugin;
+                            return Object.values(importedPlugin)[0];
                         })
                     );
 
                     character.plugins = importedPlugins;
                 }
+
+                validateCharacterConfig(character);
 
                 loadedCharacters.push(character);
             } catch (e) {
@@ -112,7 +112,7 @@ export async function loadCharacters(
     }
 
     if (loadedCharacters.length === 0) {
-        console.log("No characters found, using default character");
+        elizaLogger.log("No characters found, using default character");
         loadedCharacters.push(defaultCharacter);
     }
 
