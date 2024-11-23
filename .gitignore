@@ -39,3 +39,8 @@ characters/
 packages/core/src/providers/cache
 packages/core/src/providers/cache/*
 cache/*
+
+*.png
+*.jpg
+*.jpeg
+*.webp
