@@ -5,14 +5,22 @@ import { DiscordClientInterface } from "@ai16z/client-discord";
 import { AutoClientInterface } from "@ai16z/client-auto";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
-import { defaultCharacter } from "@ai16z/eliza";
-import { AgentRuntime } from "@ai16z/eliza";
-import { settings } from "@ai16z/eliza";
 import {
+    DbCacheAdapter,
+    defaultCharacter,
+    FsCacheAdapter,
+    ICacheManager,
+    IDatabaseCacheAdapter,
+    stringToUuid,
+    AgentRuntime,
+    CacheManager,
     Character,
     IAgentRuntime,
-    IDatabaseAdapter,
     ModelProviderName,
+    elizaLogger,
+    settings,
+    IDatabaseAdapter,
+    validateCharacterConfig,
 } from "@ai16z/eliza";
 import { bootstrapPlugin } from "@ai16z/plugin-bootstrap";
 import { solanaPlugin } from "@ai16z/plugin-solana";
@@ -21,8 +29,13 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import readline from "readline";
 import yargs from "yargs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { character } from "./character.ts";
-import { imageGenerationPlugin } from "@ai16z/plugin-image-generation";
+import type { DirectClient } from "@ai16z/client-direct";
+
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -55,21 +68,12 @@ export function parseArguments(): {
 export async function loadCharacters(
     charactersArg: string
 ): Promise<Character[]> {
-    let characterPaths = charactersArg
-        ?.split(",")
-        .map((path) => path.trim())
-        .map((path) => {
-            if (path.startsWith("../characters")) {
-                return `../${path}`;
-            }
-            if (path.startsWith("characters")) {
-                return `../../${path}`;
-            }
-            if (path.startsWith("./characters")) {
-                return `../.${path}`;
-            }
-            return path;
-        });
+    let characterPaths = charactersArg?.split(",").map((filePath) => {
+        if (path.basename(filePath) === filePath) {
+            filePath = "../characters/" + filePath;
+        }
+        return path.resolve(process.cwd(), filePath.trim());
+    });
 
     const loadedCharacters = [];
 
@@ -77,6 +81,8 @@ export async function loadCharacters(
         for (const path of characterPaths) {
             try {
                 const character = JSON.parse(fs.readFileSync(path, "utf8"));
+
+                validateCharacterConfig(character);
 
                 // is there a "plugins" field?
                 if (character.plugins) {
@@ -97,6 +103,8 @@ export async function loadCharacters(
                 loadedCharacters.push(character);
             } catch (e) {
                 console.error(`Error loading character from ${path}: ${e}`);
+                // don't continue to load if a specified file is not found
+                process.exit(1);
             }
         }
     }
@@ -165,13 +173,18 @@ export function getTokenForProvider(
     }
 }
 
-function initializeDatabase() {
+function initializeDatabase(dataDir: string) {
     if (process.env.POSTGRES_URL) {
-        return new PostgresDatabaseAdapter({
+        const db = new PostgresDatabaseAdapter({
             connectionString: process.env.POSTGRES_URL,
         });
+        return db;
     } else {
-        return new SqliteDatabaseAdapter(new Database("./db.sqlite"));
+        const filePath =
+            process.env.SQLITE_FILE ?? path.resolve(dataDir, "db.sqlite");
+        // ":memory:";
+        const db = new SqliteDatabaseAdapter(new Database(filePath));
+        return db;
     }
 }
 
@@ -215,12 +228,17 @@ export async function initializeClients(
     return clients;
 }
 
-export async function createAgent(
+export function createAgent(
     character: Character,
-    db: any,
+    db: IDatabaseAdapter,
+    cache: ICacheManager,
     token: string
 ) {
-    console.log("Creating runtime for character", character.name);
+    elizaLogger.success(
+        elizaLogger.successesTitle,
+        "Creating runtime for character",
+        character.name
+    );
     return new AgentRuntime({
         databaseAdapter: db,
         token,
@@ -231,35 +249,59 @@ export async function createAgent(
             bootstrapPlugin,
             nodePlugin,
             character.settings.secrets?.WALLET_PUBLIC_KEY ? solanaPlugin : null,
-            imageGenerationPlugin,
         ].filter(Boolean),
         providers: [],
         actions: [],
         services: [],
         managers: [],
+        cacheManager: cache,
     });
 }
 
-async function startAgent(character: Character, directClient: any) {
+function intializeFsCache(baseDir: string, character: Character) {
+    const cacheDir = path.resolve(baseDir, character.id, "cache");
+
+    const cache = new CacheManager(new FsCacheAdapter(cacheDir));
+    return cache;
+}
+
+function intializeDbCache(character: Character, db: IDatabaseCacheAdapter) {
+    const cache = new CacheManager(new DbCacheAdapter(db, character.id));
+    return cache;
+}
+
+async function startAgent(character: Character, directClient: DirectClient) {
     try {
+        character.id ??= stringToUuid(character.name);
+        character.username ??= character.name;
+
         const token = getTokenForProvider(character.modelProvider, character);
-        const db = initializeDatabase();
+        const dataDir = path.join(__dirname, "../data");
 
-        const runtime = await createAgent(character, db, token);
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
 
-        const clients = await initializeClients(
-            character,
-            runtime as IAgentRuntime
-        );
+        const db = initializeDatabase(dataDir);
 
-        directClient.registerAgent(await runtime);
+        await db.init();
+
+        const cache = intializeDbCache(character, db);
+        const runtime = createAgent(character, db, cache, token);
+
+        await runtime.initialize();
+
+        const clients = await initializeClients(character, runtime);
+
+        directClient.registerAgent(runtime);
 
         return clients;
     } catch (error) {
-        console.error(
+        elizaLogger.error(
             `Error starting agent for character ${character.name}:`,
             error
         );
+        console.error(error);
         throw error;
     }
 }
@@ -278,10 +320,10 @@ const startAgents = async () => {
 
     try {
         for (const character of characters) {
-            await startAgent(character, directClient);
+            await startAgent(character, directClient as DirectClient);
         }
     } catch (error) {
-        console.error("Error starting agents:", error);
+        elizaLogger.error("Error starting agents:", error);
     }
 
     function chat() {
@@ -294,12 +336,12 @@ const startAgents = async () => {
         });
     }
 
-    console.log("Chat started. Type 'exit' to quit.");
+    elizaLogger.log("Chat started. Type 'exit' to quit.");
     chat();
 };
 
 startAgents().catch((error) => {
-    console.error("Unhandled error in startAgents:", error);
+    elizaLogger.error("Unhandled error in startAgents:", error);
     process.exit(1); // Exit the process after logging
 });
 
@@ -308,9 +350,15 @@ const rl = readline.createInterface({
     output: process.stdout,
 });
 
+rl.on("SIGINT", () => {
+    rl.close();
+    process.exit(0);
+});
+
 async function handleUserInput(input, agentId) {
     if (input.toLowerCase() === "exit") {
         rl.close();
+        process.exit(0);
         return;
     }
 
