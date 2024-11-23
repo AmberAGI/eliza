@@ -1,3 +1,4 @@
+import { elizaLogger } from "@ai16z/eliza";
 import z from "zod";
 
 const ChatEmberRespons = z.object({
@@ -14,6 +15,8 @@ export default async function (
     message: string,
     apiKey: string
 ): Promise<string> {
+    elizaLogger.log("Asking Ember", { senderUid, message, apiKey });
+
     const response = await fetch(`https://api.emberai.xyz/v1/chat`, {
         method: "POST",
         headers: {
@@ -51,12 +54,16 @@ export default async function (
 
         switch (event) {
             case "done":
+                elizaLogger.log("Ember response", { response });
                 return response.message;
             case "error":
+                elizaLogger.error("Ember error", { response });
                 return `Error: ${response.message}`;
             case "activity":
+                elizaLogger.log("Ember activity", { response });
                 continue;
             default:
+                elizaLogger.error("Invalid response", { event });
                 throw new Error("Invalid response");
         }
     }
