@@ -37,7 +37,7 @@ async function getRemoteEmbedding(
                 : {}),
         },
         body: JSON.stringify({
-            input: trimTokens(input, 8191, "gpt-4o-mini"),
+            input: trimTokens(input, 8000, "gpt-4o-mini"),
             model: options.model,
             length: options.length || 384,
         }),
@@ -86,8 +86,10 @@ export async function embed(runtime: IAgentRuntime, input: string) {
     // 3. Fallback to OpenAI embedding model
     const embeddingModel = settings.USE_OPENAI_EMBEDDING
         ? "text-embedding-3-small"
-        : modelProvider.model?.[ModelClass.EMBEDDING] ||
-          models[ModelProviderName.OPENAI].model[ModelClass.EMBEDDING];
+        : runtime.character.modelProvider === ModelProviderName.OLLAMA
+          ? settings.OLLAMA_EMBEDDING_MODEL || "mxbai-embed-large"
+          : modelProvider.model?.[ModelClass.EMBEDDING] ||
+            models[ModelProviderName.OPENAI].model[ModelClass.EMBEDDING];
 
     if (!embeddingModel) {
         throw new Error("No embedding model configured");
@@ -142,10 +144,34 @@ async function getLocalEmbedding(input: string): Promise<number[]> {
         process.versions != null &&
         process.versions.node != null;
 
-    if (isNode) {
-        const fs = await import("fs");
-        const { FlagEmbedding } = await import("fastembed");
-        const { fileURLToPath } = await import("url");
+    if (!isNode) {
+        elizaLogger.warn(
+            "Local embedding not supported in browser, falling back to remote embedding"
+        );
+        throw new Error("Local embedding not supported in browser");
+    }
+
+    try {
+        // Try to dynamically import all required Node.js modules
+        const moduleImports = await Promise.all([
+            import("fs"),
+            import("url"),
+            // Wrap fastembed import in a try-catch to prevent build errors for non-Node.js environments.
+            (async () => {
+                try {
+                    return await import("fastembed");
+                    // eslint-disable-next-line
+                } catch (_error) {
+                    elizaLogger.error("Failed to load fastembed.");
+                    throw new Error(
+                        "fastembed import failed, falling back to remote embedding"
+                    );
+                }
+            })(),
+        ]);
+
+        const [fs, { fileURLToPath }, fastEmbed] = moduleImports;
+        const { FlagEmbedding } = fastEmbed;
 
         function getRootPath() {
             const __filename = fileURLToPath(import.meta.url);
@@ -169,13 +195,13 @@ async function getLocalEmbedding(input: string): Promise<number[]> {
             cacheDir: cacheDir,
         });
 
-        const trimmedInput = trimTokens(input, 8191, "gpt-4o-mini");
+        const trimmedInput = trimTokens(input, 8000, "gpt-4o-mini");
         const embedding = await embeddingModel.queryEmbed(trimmedInput);
         return embedding;
-    } else {
-        // Browser implementation - fallback to remote embedding
+        // eslint-disable-next-line
+    } catch (_error) {
         elizaLogger.warn(
-            "Local embedding not supported in browser, falling back to remote embedding"
+            "Local embedding not supported in browser, falling back to remote embedding."
         );
         throw new Error("Local embedding not supported in browser");
     }
