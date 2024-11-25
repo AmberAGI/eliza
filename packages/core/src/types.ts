@@ -602,8 +602,7 @@ export type Character = {
 
     /** Model provider to use */
     modelProvider: ModelProviderName;
-
-    /** Optional model endpoint override */
+    imageModelProvider?: ModelProviderName;
     modelEndpointOverride?: string;
 
     /** Optional prompt templates */
