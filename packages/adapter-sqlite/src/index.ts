@@ -287,32 +287,31 @@ export class SqliteDatabaseAdapter
         }
     ): Promise<Memory[]> {
         const queryParams = [
-            // JSON.stringify(embedding),
             new Float32Array(embedding),
             params.tableName,
             params.agentId,
         ];
-
+    
         let sql = `
-      SELECT *, vec_distance_L2(embedding, ?) AS similarity
-      FROM memories
-      WHERE embedding IS NOT NULL type = ? AND agentId = ?`;
-
+          SELECT *, vec_distance_L2(embedding, ?) AS similarity
+          FROM memories
+          WHERE embedding IS NOT NULL AND type = ? AND agentId = ?`;
+    
         if (params.unique) {
             sql += " AND `unique` = 1";
         }
-
+    
         if (params.roomId) {
             sql += " AND roomId = ?";
             queryParams.push(params.roomId);
         }
         sql += ` ORDER BY similarity DESC`;
-
+    
         if (params.count) {
             sql += " LIMIT ?";
             queryParams.push(params.count.toString());
         }
-
+    
         const memories = this.db.prepare(sql).all(...queryParams) as (Memory & {
             similarity: number;
         })[];
