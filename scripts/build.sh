@@ -35,7 +35,7 @@ PACKAGES=(
     "client-twitter"
     "plugin-node"
     "plugin-bootstrap"
-    "plugin-image-generation",
+    "plugin-image-generation"
     "plugin-ember"
     "plugin-coinbase"
 )
