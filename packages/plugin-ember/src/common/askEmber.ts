@@ -68,7 +68,6 @@ export default async function (
                 elizaLogger.log("Ember response", { response });
                 clearTimeout(timer);
                 return response.message;
-                break;
             case "error":
                 elizaLogger.error("Ember error", { response });
                 clearTimeout(timer);
