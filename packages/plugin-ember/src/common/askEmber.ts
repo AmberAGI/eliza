@@ -16,7 +16,8 @@ const DEFAULT_DELAY_IN_MS = 30000;
 export default async function (
     senderUid: string,
     message: string,
-    apiKey: string
+    apiKey: string,
+    requestedRoute: string | null = null
 ): Promise<string> {
     let hasTimerRejected = false;
     const timer = setTimeout(() => {
@@ -35,6 +36,7 @@ export default async function (
         body: JSON.stringify({
             user_id: senderUid,
             message,
+            requested_route: requestedRoute,
         }),
     });
 
