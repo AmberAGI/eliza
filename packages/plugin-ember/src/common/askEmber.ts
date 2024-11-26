@@ -65,18 +65,26 @@ export default async function (
 
         switch (event) {
             case "done":
-                elizaLogger.log("Ember response", { response });
+                elizaLogger.log(`Ember response for user ${senderUid}`, {
+                    response,
+                });
                 clearTimeout(timer);
                 return response.message;
             case "error":
-                elizaLogger.error("Ember error", { response });
+                elizaLogger.error(`Ember error for user ${senderUid}`, {
+                    response,
+                });
                 clearTimeout(timer);
                 return `Error: ${response.message}`;
             case "activity":
-                elizaLogger.log("Ember activity", { response });
+                elizaLogger.log(`Ember activity for user ${senderUid}`, {
+                    response,
+                });
                 continue;
             default:
-                elizaLogger.error("Invalid response", { event });
+                elizaLogger.error(`Invalid response for user ${senderUid}`, {
+                    event,
+                });
                 clearTimeout(timer);
                 throw new Error("Invalid response");
         }
