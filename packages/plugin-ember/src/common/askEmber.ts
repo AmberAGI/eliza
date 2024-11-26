@@ -10,11 +10,20 @@ const ChatEmberRespons = z.object({
     message: z.string(),
 });
 
+// The default delay for receiving a response from Ember.
+const DEFAULT_DELAY_IN_MS = 30000;
+
 export default async function (
     senderUid: string,
     message: string,
     apiKey: string
 ): Promise<string> {
+    let hasTimerRejected = false;
+    const timer = setTimeout(() => {
+        hasTimerRejected = true;
+        elizaLogger.log("Stopping messaging ember due to timeout");
+    }, DEFAULT_DELAY_IN_MS);
+
     elizaLogger.log("Asking Ember", { senderUid, message, apiKey });
 
     const response = await fetch(`https://api.emberai.xyz/v1/chat`, {
@@ -36,6 +45,8 @@ export default async function (
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     while (true) {
+        if (hasTimerRejected)
+            throw new Error("Stopping messaging ember due to timeout");
         const { done, value } = await reader.read();
         const { event, rawData } = parseSseResponse(decoder.decode(value));
         if (done && event !== "done") {
@@ -55,15 +66,19 @@ export default async function (
         switch (event) {
             case "done":
                 elizaLogger.log("Ember response", { response });
+                clearTimeout(timer);
                 return response.message;
+                break;
             case "error":
                 elizaLogger.error("Ember error", { response });
+                clearTimeout(timer);
                 return `Error: ${response.message}`;
             case "activity":
                 elizaLogger.log("Ember activity", { response });
                 continue;
             default:
                 elizaLogger.error("Invalid response", { event });
+                clearTimeout(timer);
                 throw new Error("Invalid response");
         }
     }
