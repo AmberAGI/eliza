@@ -173,13 +173,18 @@ export class ClientBase extends EventEmitter {
         }
 
         elizaLogger.log("Waiting for Twitter login");
+        let loggedInWaits = 0;
         while (true) {
-            await this.twitterClient.login(
-                username,
-                this.runtime.getSetting("TWITTER_PASSWORD"),
-                this.runtime.getSetting("TWITTER_EMAIL"),
-                this.runtime.getSetting("TWITTER_2FA_SECRET")
-            );
+            
+            if (loggedInWaits > 10) {
+                await this.twitterClient.login(
+                    username,
+                    this.runtime.getSetting("TWITTER_PASSWORD"),
+                    this.runtime.getSetting("TWITTER_EMAIL"),
+                    this.runtime.getSetting("TWITTER_2FA_SECRET")
+                );
+                loggedInWaits = 0;
+            }
 
             if (await this.twitterClient.isLoggedIn()) {
                 const cookies = await this.twitterClient.getCookies();
@@ -190,6 +195,7 @@ export class ClientBase extends EventEmitter {
             elizaLogger.error("Failed to login to Twitter trying again...");
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
+            loggedInWaits++;
         }
 
         // Initialize Twitter profile
