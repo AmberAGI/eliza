@@ -172,11 +172,11 @@ export class ClientBase extends EventEmitter {
             }
         }
 
-        elizaLogger.log("Waiting for Twitter login");
         let loggedInWaits = 0;
         while (true) {
-            
             if (loggedInWaits > 10) {
+                elizaLogger.error("Failed to login to Twitter trying again...");
+
                 await this.twitterClient.login(
                     username,
                     this.runtime.getSetting("TWITTER_PASSWORD"),
@@ -192,7 +192,7 @@ export class ClientBase extends EventEmitter {
                 break;
             }
 
-            elizaLogger.error("Failed to login to Twitter trying again...");
+            elizaLogger.log("Waiting for Twitter login");
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
             loggedInWaits++;
