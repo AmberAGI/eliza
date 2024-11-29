@@ -133,6 +133,14 @@ export class AgentRuntime implements IAgentRuntime {
      */
     knowledgeManager: IMemoryManager;
 
+    /**
+     * The last State object returned by the composeState method
+     */
+    lastMessageState: {
+        message: string;
+        state: State;
+    };
+
     services: Map<ServiceType, Service> = new Map();
     memoryManagers: Map<string, IMemoryManager> = new Map();
     cacheManager: ICacheManager;
