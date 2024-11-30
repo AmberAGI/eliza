@@ -237,6 +237,25 @@ export const models: Models = {
             [ModelClass.IMAGE]: "PepeXL",
         },
     },
+    [ModelProviderName.EMBERAI]: {
+        endpoint: settings.EMBERAI_SERVER_URL || "http://localhost:34832",
+        settings: {
+            stop: [],
+            maxInputTokens: 128000,
+            maxOutputTokens: 8192,
+            frequency_penalty: 0.0,
+            presence_penalty: 0.0,
+            temperature: 0.6,
+        },
+        model: {
+            [ModelClass.SMALL]: "meta-llama/Llama-3.2-3B-Instruct-Turbo",
+            [ModelClass.MEDIUM]: "meta-llama-3.1-8b-instruct",
+            [ModelClass.LARGE]: "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+            [ModelClass.EMBEDDING]:
+                "togethercomputer/m2-bert-80M-32k-retrieval",
+            [ModelClass.IMAGE]: "black-forest-labs/FLUX.1-schnell",
+        },
+    },
 };
 
 export function getModel(provider: ModelProviderName, type: ModelClass) {

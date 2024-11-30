@@ -170,6 +170,11 @@ export function getTokenForProvider(
                 character.settings?.secrets?.GROQ_API_KEY ||
                 settings.GROQ_API_KEY
             );
+        case ModelProviderName.EMBERAI:
+            return (
+                character.settings?.secrets?.EMBERAI_API_KEY ||
+                settings.EMBERAI_API_KEY
+            );
     }
 }
 
@@ -213,6 +218,11 @@ export async function initializeClients(
     if (clientTypes.includes("twitter")) {
         const twitterClients = await TwitterClientInterface.start(runtime);
         clients.push(twitterClients);
+    }
+
+    if (clientTypes.includes("emberai")) {
+        const emberAiClient = await EmberAiClientInterface.start(runtime);
+        if (emberAiClient) clients.push(emberAiClient);
     }
 
     if (character.plugins?.length > 0) {

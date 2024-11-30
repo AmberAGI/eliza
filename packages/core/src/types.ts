@@ -198,6 +198,7 @@ export type Models = {
     [ModelProviderName.OPENROUTER]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.HEURIST]: Model;
+    [ModelProviderName.EMBERAI]: Model;
 };
 
 /**
@@ -216,6 +217,7 @@ export enum ModelProviderName {
     OPENROUTER = "openrouter",
     OLLAMA = "ollama",
     HEURIST = "heurist",
+    EMBERAI = "emberai",
 }
 
 /**
