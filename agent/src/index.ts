@@ -282,7 +282,7 @@ async function startAgent(character: Character, directClient: DirectClient) {
         character.id ??= stringToUuid(character.name);
         character.username ??= character.name;
 
-        const token = getTokenForProvider(character.modelProvider, character);
+        const token = getTokenForProvider(ModelProviderName.OPENROUTER, character);
         const dataDir = path.join(__dirname, "../data");
 
         if (!fs.existsSync(dataDir)) {
@@ -301,6 +301,9 @@ async function startAgent(character: Character, directClient: DirectClient) {
         const clients = await initializeClients(character, runtime);
 
         directClient.registerAgent(runtime);
+
+        // Set the model provider back to Llama Local
+        runtime.modelProvider = ModelProviderName.LLAMALOCAL;
 
         return clients;
     } catch (error) {
