@@ -172,14 +172,19 @@ export class ClientBase extends EventEmitter {
             }
         }
 
-        elizaLogger.log("Waiting for Twitter login");
+        let loggedInWaits = 0;
         while (true) {
-            await this.twitterClient.login(
-                username,
-                this.runtime.getSetting("TWITTER_PASSWORD"),
-                this.runtime.getSetting("TWITTER_EMAIL"),
-                this.runtime.getSetting("TWITTER_2FA_SECRET")
-            );
+            if (loggedInWaits > 10) {
+                elizaLogger.error("Failed to login to Twitter trying again...");
+
+                await this.twitterClient.login(
+                    username,
+                    this.runtime.getSetting("TWITTER_PASSWORD"),
+                    this.runtime.getSetting("TWITTER_EMAIL"),
+                    this.runtime.getSetting("TWITTER_2FA_SECRET")
+                );
+                loggedInWaits = 0;
+            }
 
             if (await this.twitterClient.isLoggedIn()) {
                 const cookies = await this.twitterClient.getCookies();
@@ -187,9 +192,10 @@ export class ClientBase extends EventEmitter {
                 break;
             }
 
-            elizaLogger.error("Failed to login to Twitter trying again...");
+            elizaLogger.log("Waiting for Twitter login");
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
+            loggedInWaits++;
         }
 
         // Initialize Twitter profile
@@ -319,7 +325,6 @@ export class ClientBase extends EventEmitter {
             // Get the existing memories from the database
             const existingMemories =
                 await this.runtime.messageManager.getMemoriesByRoomIds({
-                    agentId: this.runtime.agentId,
                     roomIds: cachedTimeline.map((tweet) =>
                         stringToUuid(
                             tweet.conversationId + "-" + this.runtime.agentId
@@ -462,7 +467,6 @@ export class ClientBase extends EventEmitter {
         // Check the existing memories in the database
         const existingMemories =
             await this.runtime.messageManager.getMemoriesByRoomIds({
-                agentId: this.runtime.agentId,
                 roomIds: Array.from(roomIds),
             });
 
@@ -564,7 +568,6 @@ export class ClientBase extends EventEmitter {
             const recentMessage = await this.runtime.messageManager.getMemories(
                 {
                     roomId: message.roomId,
-                    agentId: this.runtime.agentId,
                     count: 1,
                     unique: false,
                 }

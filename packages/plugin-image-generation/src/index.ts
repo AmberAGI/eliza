@@ -10,7 +10,7 @@ import {
     Plugin,
     State,
 } from "@ai16z/eliza";
-import { generateCaption, generateImage, settings } from "@ai16z/eliza";
+import { generateImage, settings } from "@ai16z/eliza";
 
 import fs from "fs";
 import path from "path";

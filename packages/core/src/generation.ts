@@ -62,7 +62,12 @@ export async function generateText({
         return "";
     }
 
-    elizaLogger.log("Genarating text...");
+    elizaLogger.log("Generating text...");
+
+    elizaLogger.info("Generating text with options:", {
+        modelProvider: runtime.modelProvider,
+        model: modelClass,
+    });
 
     const provider = runtime.modelProvider;
     const endpoint =
@@ -83,6 +88,8 @@ export async function generateText({
     ) {
         model = runtime.getSetting("LLAMACLOUD_MODEL_SMALL");
     }
+
+    elizaLogger.info("Selected model:", model);
 
     const temperature = models[provider].settings.temperature;
     const frequency_penalty = models[provider].settings.frequency_penalty;
@@ -420,6 +427,7 @@ export function trimTokens(
         encoding.free();
     }
 }
+
 /**
  * Sends a message to the model to determine if it should respond to the given context.
  * @param opts - The options for the generateText request
@@ -708,7 +716,7 @@ export async function generateMessageResponse({
     let retryLength = 1000; // exponential backoff
     while (true) {
         try {
-            elizaLogger.log("Genarating message response..");
+            elizaLogger.log("Generating message response..");
 
             const response = await generateText({
                 runtime,
@@ -815,12 +823,12 @@ export const generateImage = async (
 
             const imageURL = await response.json();
             return { success: true, data: [imageURL] };
-        } else if (
-            imageModelProvider === ModelProviderName.LLAMACLOUD
-        ) {
+        } else if (imageModelProvider === ModelProviderName.LLAMACLOUD) {
             const together = new Together({ apiKey: apiKey as string });
             const response = await together.images.create({
-                model: runtime.getSetting("TOGETHER_IMAGE_MODEL") ?? "black-forest-labs/FLUX.1-schnell",
+                model:
+                    runtime.getSetting("TOGETHER_IMAGE_MODEL") ??
+                    "black-forest-labs/FLUX.1-schnell",
                 prompt,
                 width,
                 height,
@@ -948,6 +956,9 @@ export const generateObjectV2 = async ({
 
     const provider = runtime.modelProvider;
     const model = models[provider].model[modelClass];
+    if (!model) {
+        throw new Error(`Unsupported model class: ${modelClass}`);
+    }
     const temperature = models[provider].settings.temperature;
     const frequency_penalty = models[provider].settings.frequency_penalty;
     const presence_penalty = models[provider].settings.presence_penalty;
@@ -956,7 +967,7 @@ export const generateObjectV2 = async ({
     const apiKey = runtime.token;
 
     try {
-        context = await trimTokens(context, max_context_length, modelClass);
+        context = await trimTokens(context, max_context_length, "gpt-4o");
 
         const modelOptions: ModelSettings = {
             prompt: context,

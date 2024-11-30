@@ -724,7 +724,7 @@ export interface IDatabaseAdapter {
         count?: number;
         unique?: boolean;
         tableName: string;
-        agentId?: UUID;
+        agentId: UUID;
         start?: number;
         end?: number;
     }): Promise<Memory[]>;
@@ -732,7 +732,7 @@ export interface IDatabaseAdapter {
     getMemoryById(id: UUID): Promise<Memory | null>;
 
     getMemoriesByRoomIds(params: {
-        agentId?: UUID;
+        agentId: UUID;
         roomIds: UUID[];
     }): Promise<Memory[]>;
 
@@ -756,6 +756,7 @@ export interface IDatabaseAdapter {
 
     searchMemories(params: {
         tableName: string;
+        agentId: UUID;
         roomId: UUID;
         embedding: number[];
         match_threshold: number;
@@ -797,6 +798,7 @@ export interface IDatabaseAdapter {
     ): Promise<number>;
 
     getGoals(params: {
+        agentId: UUID;
         roomId: UUID;
         userId?: UUID | null;
         onlyInProgress?: boolean;
@@ -876,7 +878,6 @@ export interface IMemoryManager {
         roomId: UUID;
         count?: number;
         unique?: boolean;
-        agentId?: UUID;
         start?: number;
         end?: number;
     }): Promise<Memory[]>;
@@ -886,12 +887,7 @@ export interface IMemoryManager {
     ): Promise<{ embedding: number[]; levenshtein_score: number }[]>;
 
     getMemoryById(id: UUID): Promise<Memory | null>;
-
-    getMemoriesByRoomIds(params: {
-        roomIds: UUID[];
-        agentId?: UUID;
-    }): Promise<Memory[]>;
-
+    getMemoriesByRoomIds(params: { roomIds: UUID[] }): Promise<Memory[]>;
     searchMemoriesByEmbedding(
         embedding: number[],
         opts: {
@@ -899,7 +895,6 @@ export interface IMemoryManager {
             count?: number;
             roomId: UUID;
             unique?: boolean;
-            agentId?: UUID;
         }
     ): Promise<Memory[]>;
 
@@ -1040,7 +1035,6 @@ export interface ITranscriptionService extends Service {
 
 export interface IVideoService extends Service {
     isVideoUrl(url: string): boolean;
-    processVideo(url: string): Promise<Media>;
     fetchVideoInfo(url: string): Promise<Media>;
     downloadVideo(videoInfo: Media): Promise<string>;
     processVideo(url: string, runtime: IAgentRuntime): Promise<Media>;
