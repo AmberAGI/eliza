@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import type { GeckoTerminalResponse } from '../schemas/geckoTerminal';
 
 // Import the functions we want to test
-import { getTopThreeTokens, formatTokenData, queryGeckoTerminal } from '../providers/tokenTrending';
+import { getTopTokens, formatTokenData, queryGeckoTerminal } from '../providers/tokenTrending';
 
 const mockResponse: GeckoTerminalResponse = {
   data: [
@@ -230,7 +230,7 @@ describe('tokenTrending', () => {
 
     describe('getTopThreeTokens', () => {
         it('should correctly score and sort tokens', () => {
-            const topTokens = getTopThreeTokens(mockResponse);
+            const topTokens = getTopTokens(mockResponse);
 
             expect(topTokens).toHaveLength(3);
             // Additional assertions to check if the tokens are correctly sorted

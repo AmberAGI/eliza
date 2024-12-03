@@ -34,7 +34,7 @@ export async function queryGeckoTerminal(
     }
 }
 
-export function getTopThreeTokens(poolData: PoolData[]): PoolDataWithScore[] {
+export function getTopTokens(poolData: PoolData[]): PoolDataWithScore[] {
     const epsilon = 1e-6;
     const now = Date.now();
 
@@ -184,16 +184,16 @@ export function getTopThreeTokens(poolData: PoolData[]): PoolDataWithScore[] {
     tokensWithScores.sort((a, b) => b.score - a.score);
 
     // Return the top tokens with their original data and scores
-    return tokensWithScores.slice(0, 3).map((token) => ({
+    return tokensWithScores.slice(0, 10).map((token) => ({
         ...token.item,
         score: token.score,
     }));
 }
 
 export function formatTokenData(data: PoolDataWithScore[]): string {
-    // Randomly decide whether to return 1 or 3 tokens (70% chance for 1 token)
-    const returnSingleToken = Math.random() < 0.7;
-    const tokensToReturn = returnSingleToken ? data.slice(0, 1) : data.slice(0, 3);
+    // Randomly decide whether to return 6 or 10 tokens (65% chance for 6 tokens)
+    const returnSixTokens = Math.random() < 0.65;
+    const tokensToReturn = returnSixTokens ? data.slice(0, 6) : data.slice(0, 10);
 
     const filteredTokens = tokensToReturn.filter((token) => token.attributes.name);
     const tokensXml = filteredTokens.map((token) => {
@@ -206,13 +206,16 @@ export function formatTokenData(data: PoolDataWithScore[]): string {
         return `
         <token>
             <symbol>$${symbol}</symbol>
-            <contractAddress>${token.relationships.base_token.data.id}</contractAddress>
-            <price>${attributes.base_token_price_usd}</price>
-            <priceChange1h>${attributes.price_change_percentage.h1 || '0'}%</priceChange1h>
-            <priceChange6h>${attributes.price_change_percentage.h6 || '0'}%</priceChange6h>
-            <priceChange24h>${attributes.price_change_percentage.h24 || '0'}%</priceChange24h>
-            <volumeUSD>${attributes.volume_usd.h24}</volumeUSD>
-            <reserveUSD>${attributes.reserve_in_usd}</reserveUSD>
+            <contractAddress>${token.relationships.base_token.data.id ?? 'unknown'}</contractAddress>
+            <price>${attributes.base_token_price_usd ?? 'unknown'}</price>
+            <priceChange1h>${attributes.price_change_percentage.h1 ?? 'unknown'}%</priceChange1h>
+            <priceChange6h>${attributes.price_change_percentage.h6 ?? 'unknown'}%</priceChange6h>
+            <priceChange24h>${attributes.price_change_percentage.h24 ?? 'unknown'}%</priceChange24h>
+            <volumeUsd1h>${attributes.volume_usd.h1 ?? 'unknown'}</volumeUsd1h>
+            <volumeUsd6h>${attributes.volume_usd.h6 ?? 'unknown'}</volumeUsd6h>
+            <volumeUsd24h>${attributes.volume_usd.h24 ?? 'unknown'}</volumeUsd24h>
+            <marketCapUsd>${attributes.market_cap_usd ?? attributes.fdv_usd ?? 'unknown'}</marketCapUsd>
+            <totalLiquidityUsd>${attributes.reserve_in_usd ?? 'unknown'}</totalLiquidityUsd>
         </token>`;
     }).join('');
 
@@ -223,17 +226,17 @@ const tokenTrendingProvider: Provider = {
     get: async (runtime: AgentRuntime, message: Memory) => {
         try {
             const aggregatedData: GeckoTerminalResponse['data'] = [];
-            for (let page = 1; page <= 3; page++) {
+            for (let page = 1; page <= 5; page++) {
                 const searchParameters = { "query": message.content.text, "page": page };
                 const response = await queryGeckoTerminal("/networks/trending_pools", searchParameters);
                 elizaLogger.log(`Gecko Terminal returned ${response.data.length} trending pools on page ${page}`);
                 aggregatedData.push(...response.data);
             }
 
-            const topThreeTokens = getTopThreeTokens(aggregatedData);
-            elizaLogger.log(`Top three tokens: ${topThreeTokens.map((token) => token.attributes.name).join(", ")}`);
+            const topTokens = getTopTokens(aggregatedData);
+            elizaLogger.log(`Top tokens: ${topTokens.map((token) => token.attributes.name).join(", ")}`);
 
-            const formattedTokens = formatTokenData(topThreeTokens);
+            const formattedTokens = formatTokenData(topTokens);
             return formattedTokens;
         } catch (error) {
             elizaLogger.error(error);
