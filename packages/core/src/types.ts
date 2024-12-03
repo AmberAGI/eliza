@@ -243,6 +243,9 @@ export interface State {
     /** Current room/conversation ID */
     roomId: UUID;
 
+    /** Source of the current message */
+    source?: string;
+
     /** Optional agent name */
     agentName?: string;
 
@@ -956,6 +959,11 @@ export interface IAgentRuntime {
     descriptionManager: IMemoryManager;
     loreManager: IMemoryManager;
     cacheManager: ICacheManager;
+
+    lastMessageState: {
+        message: string;
+        state: State;
+    };
 
     services: Map<ServiceType, Service>;
 

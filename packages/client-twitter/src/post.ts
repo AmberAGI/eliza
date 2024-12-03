@@ -153,6 +153,7 @@ export class TwitterPostClient {
                     agentId: this.runtime.agentId,
                     content: {
                         text: topics,
+                        source: "twitter",
                         action: "",
                     },
                 },

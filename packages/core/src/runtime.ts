@@ -1079,6 +1079,7 @@ Text: ${attachment.text}
                     : "",
             actorsData,
             roomId,
+            source: message.content.source,
             goals:
                 goals && goals.length > 0
                     ? addHeader(
@@ -1171,7 +1172,14 @@ Text: ${attachment.text}
             ),
         };
 
-        return { ...initialState, ...actionState } as State;
+        const composedState = { ...initialState, ...actionState };
+
+        this.lastMessageState = {
+            message: message.content.text,
+            state: composedState,
+        };
+
+        return composedState as State;
     }
 
     async updateRecentMessageState(state: State): Promise<State> {
