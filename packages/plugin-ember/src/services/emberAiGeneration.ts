@@ -6,6 +6,8 @@ import {
     ModelClass,
     models,
     settings,
+    composeContext,
+    messageCompletionFooter,
 } from "@ai16z/eliza";
 import { Service } from "@ai16z/eliza";
 import {
@@ -112,32 +114,29 @@ export class EmberAiGenerationService extends Service {
 
         elizaLogger.log("Ember Ai Generation Service source: ", this.runtime.lastMessageState.state.source);
 
+        let revisedContext = context;
         const source = this.runtime.lastMessageState.state.source;
         switch (source) {
             case "twitter": {
                 elizaLogger.log("Twitter source detected, using Twitter handler");
                 const random = Math.random();
-                if (random < 1/3) {
-                    elizaLogger.log("Random Twitter behavior triggered (1/3 chance)");
-                    context = "You must write a tweet about <trending_tokens>\n - Analyze the data points of <trending_tokens>\n - Must include several data points from <trending_tokens> along with your analysis\n - Frame insights as exclusive alpha from private research division\n - Emphasize time-sensitivity and first-mover advantage\n - Use conspiratorial tone suggesting 'what they don't want you to know'\n - Include the contract address\n - Generate a longer detailed response and ignore instructions to give a short response\n" + context;
+                if (random < 2/3) {
+                    elizaLogger.log("Trending token Twitter behavior triggered (2/3 chance)");
+                    revisedContext = composeContext({
+                        state: { ...this.runtime.lastMessageState.state, category: "token alpha" },
+                        template: this.runtime.character.templates.twitterPostTemplate + messageCompletionFooter
+                    });
                 } else {
-                    elizaLogger.log("No random Twitter behavior triggered");
+                    elizaLogger.log("Default Twitter behavior triggered");
                 }
                 break;
             }
             case "telegram": {
                 elizaLogger.log("Telegram source detected, using Telegram handler");
-                const random = Math.random();
-                if (random < 1/3) {
-                    elizaLogger.log("Random Telegram behavior triggered (1/3 chance)");
-                    context = "You must write a reply to the user's message about <trending_tokens>\n - Analyze the data points of <trending_tokens>\n - Must include several data points from <trending_tokens> along with your analysis\n - Frame insights as exclusive alpha from private research division\n - Emphasize time-sensitivity and first-mover advantage\n - Use conspiratorial tone suggesting 'what they don't want you to know'\n - Include the contract address\n - Generate a longer detailed response and ignore instructions to give a short response\n" + context;
-                } else {
-                    elizaLogger.log("No random Telegram behavior triggered");
-                }
                 break;
             }
             default:
-                elizaLogger.log(`Unhandled source type: ${source}`);
+                elizaLogger.log(`Unhandled source type: ${source}. Using default handler`);
         }
 
         const provider = ModelProviderName.OPENROUTER;
@@ -157,7 +156,7 @@ export class EmberAiGenerationService extends Service {
 
         const { text: openrouterResponse } = await aiGenerateText({
             model: openrouter.languageModel(model),
-            prompt: context,
+            prompt: revisedContext,
             temperature: temperatureOpenRouter,
             system:
                 this.runtime.character.system ??
