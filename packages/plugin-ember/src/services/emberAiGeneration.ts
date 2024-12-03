@@ -12,15 +12,88 @@ import {
     generateText as aiGenerateText,
 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-
+import fs from 'fs';
+import path from 'path';
+import { promisify } from 'util';
+import { fileURLToPath } from 'url';
 
 export class EmberAiGenerationService extends Service {
     private runtime: IAgentRuntime;
+    private readonly logDir = path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        '../../../agent/logs'
+    );
+    private readonly logFile = 'runtime-state.json';
 
     static serviceType: ServiceType = ServiceType.TEXT_GENERATION;
 
     constructor() {
         super();
+    }
+
+    private async writeToLog(data: any) {
+        elizaLogger.log("Writing text generation to log file...");
+        try {
+            elizaLogger.log("Log directory path:", this.logDir);
+            elizaLogger.log("Full log file path:", path.join(this.logDir, this.logFile));
+            
+            // Create logs directory if it doesn't exist
+            if (!fs.existsSync(this.logDir)) {
+                elizaLogger.log("Creating log directory as it doesn't exist");
+                await promisify(fs.mkdir)(this.logDir, { recursive: true });
+            }
+
+            // Filter out embeddings from the data
+            const filteredData = JSON.parse(JSON.stringify(data.state));
+            
+            // Filter embeddings from recentInteractionsData
+            if (filteredData.recentInteractionsData) {
+                filteredData.recentInteractionsData = filteredData.recentInteractionsData.map(
+                    (interaction: any) => {
+                        const { embedding, ...rest } = interaction;
+                        return rest;
+                    }
+                );
+            }
+
+            // Filter embeddings from recentMessagesData
+            if (filteredData.recentMessagesData) {
+                filteredData.recentMessagesData = filteredData.recentMessagesData.map(
+                    (message: any) => {
+                        const { embedding, ...rest } = message;
+                        return rest;
+                    }
+                );
+            }
+
+            const logEntry = {
+                timestamp: new Date().toISOString(),
+                state: filteredData,
+                message: data.message,
+                context: data.context
+            };
+
+            const logPath = path.join(this.logDir, this.logFile);
+            
+            // Read existing logs or start with empty array
+            let logs = [];
+            if (fs.existsSync(logPath)) {
+                const content = await promisify(fs.readFile)(logPath, 'utf-8');
+                logs = JSON.parse(content);
+            }
+
+            // Append new log entry
+            logs.push(logEntry);
+
+            // Write back to file
+            await promisify(fs.writeFile)(
+                logPath,
+                JSON.stringify(logs, null, 2),
+                'utf-8'
+            );
+        } catch (error) {
+            elizaLogger.error('Failed to write to log file:', error);
+        }
     }
 
     async queueTextCompletion(
@@ -31,6 +104,42 @@ export class EmberAiGenerationService extends Service {
         presence_penalty: number,
         max_tokens: number
     ): Promise<string> {
+        await this.writeToLog({
+            state: this.runtime.lastMessageState.state,
+            message: this.runtime.lastMessageState.message,
+            context: context
+        });
+
+        elizaLogger.log("Ember Ai Generation Service source: ", this.runtime.lastMessageState.state.source);
+
+        const source = this.runtime.lastMessageState.state.source;
+        switch (source) {
+            case "twitter": {
+                elizaLogger.log("Twitter source detected, using Twitter handler");
+                const random = Math.random();
+                if (random < 1/3) {
+                    elizaLogger.log("Random Twitter behavior triggered (1/3 chance)");
+                    context = "You must write a tweet about <trending_tokens>\n - Analyze the data points of <trending_tokens>\n - Must include several data points from <trending_tokens> along with your analysis\n - Frame insights as exclusive alpha from private research division\n - Emphasize time-sensitivity and first-mover advantage\n - Use conspiratorial tone suggesting 'what they don't want you to know'\n - Include the contract address\n - Generate a longer detailed response and ignore instructions to give a short response\n" + context;
+                } else {
+                    elizaLogger.log("No random Twitter behavior triggered");
+                }
+                break;
+            }
+            case "telegram": {
+                elizaLogger.log("Telegram source detected, using Telegram handler");
+                const random = Math.random();
+                if (random < 1/3) {
+                    elizaLogger.log("Random Telegram behavior triggered (1/3 chance)");
+                    context = "You must write a reply to the user's message about <trending_tokens>\n - Analyze the data points of <trending_tokens>\n - Must include several data points from <trending_tokens> along with your analysis\n - Frame insights as exclusive alpha from private research division\n - Emphasize time-sensitivity and first-mover advantage\n - Use conspiratorial tone suggesting 'what they don't want you to know'\n - Include the contract address\n - Generate a longer detailed response and ignore instructions to give a short response\n" + context;
+                } else {
+                    elizaLogger.log("No random Telegram behavior triggered");
+                }
+                break;
+            }
+            default:
+                elizaLogger.log(`Unhandled source type: ${source}`);
+        }
+
         const provider = ModelProviderName.OPENROUTER;
 
         // Get model settings for OpenRouter and ignore function parameters
