@@ -1,0 +1,12 @@
+version: '3'
+services:
+  stage:
+    build: 
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: amber-eliza-stage
+    volumes:
+      - .:/workspaces/amber-eliza
+      - ~/.ssh:/home/vscode/.ssh:ro  # Optional: for SSH keys
+    command: sleep infinity  # Keeps container running
+    restart: unless-stopped  # Restarts container on host reboot
