@@ -6,8 +6,7 @@ import {
     ModelClass,
     models,
     settings,
-    composeContext,
-    messageCompletionFooter,
+    composeContext
 } from "@ai16z/eliza";
 import { Service } from "@ai16z/eliza";
 import {
@@ -18,6 +17,8 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
+import getApiKey from "../common/getApiKey";
+import askEmber from "../common/askEmber";
 
 export class EmberAiGenerationService extends Service {
     private runtime: IAgentRuntime;
@@ -98,6 +99,11 @@ export class EmberAiGenerationService extends Service {
         }
     }
 
+    private async requestEmberResponse(message: string, senderUid: string) {
+        const apiKey = getApiKey(this.runtime);
+        return await askEmber(senderUid, message, apiKey);
+    }
+
     async queueTextCompletion(
         context: string,
         temperature: number,
@@ -106,16 +112,18 @@ export class EmberAiGenerationService extends Service {
         presence_penalty: number,
         max_tokens: number
     ): Promise<string> {
+        const state = this.runtime.lastMessageState.state;
+        const message = this.runtime.lastMessageState.message;
         await this.writeToLog({
-            state: this.runtime.lastMessageState.state,
-            message: this.runtime.lastMessageState.message,
-            context: context
+            state,
+            message,
+            context
         });
 
-        elizaLogger.log("Ember Ai Generation Service source: ", this.runtime.lastMessageState.state.source);
-
         let revisedContext = context;
-        const source = this.runtime.lastMessageState.state.source;
+        const source = state.source;
+        elizaLogger.log("Ember Ai Generation Service source: ", source);
+
         switch (source) {
             case "twitter": {
                 elizaLogger.log("Twitter source detected, using Twitter handler");
@@ -123,8 +131,8 @@ export class EmberAiGenerationService extends Service {
                 if (random < 2/3) {
                     elizaLogger.log("Trending token Twitter behavior triggered (2/3 chance)");
                     revisedContext = composeContext({
-                        state: { ...this.runtime.lastMessageState.state, category: "token alpha" },
-                        template: this.runtime.character.templates.twitterPostTemplate + messageCompletionFooter
+                        state: { ...state, category: "token alpha" },
+                        template: this.runtime.character.templates.twitterPostTemplate
                     });
                 } else {
                     elizaLogger.log("Default Twitter behavior triggered");
@@ -133,7 +141,7 @@ export class EmberAiGenerationService extends Service {
             }
             case "telegram": {
                 elizaLogger.log("Telegram source detected, using Telegram handler");
-                break;
+                return await this.requestEmberResponse(message, state.userId);
             }
             default:
                 elizaLogger.log(`Unhandled source type: ${source}. Using default handler`);

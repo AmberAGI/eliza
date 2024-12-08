@@ -46,12 +46,14 @@ export class ImageDescriptionService
         this.runtime = runtime;
         const model = models[runtime?.character?.modelProvider];
 
-        if (model === models[ModelProviderName.LLAMALOCAL]) {
+        /*if (model === models[ModelProviderName.LLAMALOCAL]) {
             await this.initializeLocalModel();
         } else {
             this.modelId = "gpt-4o-mini";
             this.device = "cloud";
-        }
+        }*/
+        this.modelId = "gpt-4o-mini";
+        this.device = "cloud";
 
         this.initialized = true;
     }

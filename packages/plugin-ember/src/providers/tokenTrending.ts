@@ -1,4 +1,4 @@
-import { AgentRuntime, elizaLogger, Memory, Provider } from "@ai16z/eliza";
+import { elizaLogger, IAgentRuntime, Memory, Provider } from "@ai16z/eliza";
 import { GeckoTerminalResponseSchema, type GeckoTerminalResponse, type PoolData } from "../schemas/geckoTerminal";
 
 interface GeckoTerminalParams {
@@ -223,7 +223,10 @@ export function formatTokenData(data: PoolDataWithScore[]): string {
 }
 
 const tokenTrendingProvider: Provider = {
-    get: async (runtime: AgentRuntime, message: Memory) => {
+    get: async (runtime: IAgentRuntime, message: Memory) => {
+        /*if (runtime.lastMessageState.state.source !== "twitter") {
+            return "This provider is only available for Twitter.";
+        }*/
         try {
             const aggregatedData: GeckoTerminalResponse['data'] = [];
             for (let page = 1; page <= 5; page++) {
