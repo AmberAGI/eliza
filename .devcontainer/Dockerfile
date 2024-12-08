@@ -9,9 +9,14 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     build-essential \
+    tmux \
     # Add any other packages you need here
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Set up tmux configuration
+RUN echo "set-option -g default-shell /bin/bash" > /home/vscode/.tmux.conf && \
+chown vscode:vscode /home/vscode/.tmux.conf
 
 # Create a non-root user to match the host user
 ARG USERNAME=vscode
