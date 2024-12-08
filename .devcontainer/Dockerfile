@@ -17,10 +17,13 @@ RUN apt-get update && apt-get install -y \
 
 # Install and configure mise
 RUN curl https://mise.run | sh
+
+# Add mise to PATH and configure shell
+RUN echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc
 RUN echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc
 
-# Install mise dependencies
-RUN mise install
+# Now we can use mise
+RUN /root/.local/bin/mise install
 
 # Create a non-root user to match the host user
 ARG USERNAME=vscode
