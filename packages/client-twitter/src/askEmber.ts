@@ -1,4 +1,4 @@
-import { elizaLogger } from "@ai16z/eliza";
+import { elizaLogger, IAgentRuntime } from "@ai16z/eliza";
 import z from "zod";
 
 const ChatEmberRespons = z.object({
@@ -16,7 +16,7 @@ const DEFAULT_DELAY_IN_MS = 30000;
 export default async function (
     senderUid: string,
     message: string,
-    apiKey: string,
+    runtime: IAgentRuntime,
     requestedRoute: string | null = null
 ): Promise<string> {
     let hasTimerRejected = false;
@@ -25,9 +25,12 @@ export default async function (
         elizaLogger.log("Stopping messaging ember due to timeout");
     }, DEFAULT_DELAY_IN_MS);
 
+    const apiKey = runtime.getSetting("EMBERAI_API_KEY");
+    const apiUrl = runtime.getSetting("EMBERAI_API_URL");
+
     elizaLogger.log("Asking Ember", { senderUid, message, apiKey });
 
-    const response = await fetch(`https://devapi.emberai.xyz/v1/chat`, {
+    const response = await fetch(`https://${apiUrl}/v1/chat`, {
         method: "POST",
         headers: {
             Authorization: `Bearer ${apiKey}`,

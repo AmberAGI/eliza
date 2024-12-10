@@ -125,7 +125,7 @@ export class TwitterPostClient {
         const topicsWithWeights = [
             { topic: "token analysis", weight: 2 },
             { topic: "crypto news", weight: 0 },
-            { topic: "market wisdom", weight: 0 }
+            { topic: "market wisdom", weight: 1 }
         ];
 
         const totalWeight = topicsWithWeights.reduce((sum, item) => sum + item.weight, 0);
@@ -143,7 +143,8 @@ export class TwitterPostClient {
     }
 
     private async getTokenAnalysis() {
-        return await askEmber(this.runtime.agentId, "Token analysis", getApiKey(this.runtime), "token_analysis_query");
+        const agentId = this.runtime.agentId;
+        return await askEmber(agentId, "Tech analysis", this.runtime, "token_analysis_query");
     }
 
     private async generateNewTweet() {
@@ -163,11 +164,14 @@ export class TwitterPostClient {
             let newTweetContent = "";
             switch (await this.selectTopic()) {
                 case "token analysis":
+                    elizaLogger.log("getting token analysis");
                     newTweetContent = await this.getTokenAnalysis();
                     break;
                 case "crypto news":
+                    elizaLogger.log("getting crypto news");
                     break;
                 case "market wisdom":
+                    elizaLogger.log("getting market wisdom");
                     const state = await this.runtime.composeState(
                         {
                             userId: this.runtime.agentId,
@@ -190,8 +194,6 @@ export class TwitterPostClient {
                             twitterPostTemplate,
                     });
 
-                    elizaLogger.debug("generate post prompt:\n" + context);
-
                     newTweetContent = await generateText({
                         runtime: this.runtime,
                         context,
@@ -200,7 +202,7 @@ export class TwitterPostClient {
                     break;
             }
 
-            /*  */
+            elizaLogger.log("newTweetContent:\n" + newTweetContent);
 
             // Replace \n with proper line breaks and trim excess spaces
             const formattedTweet = newTweetContent
