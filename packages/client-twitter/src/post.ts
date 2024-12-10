@@ -10,6 +10,8 @@ import {
 } from "@ai16z/eliza";
 import { elizaLogger } from "@ai16z/eliza";
 import { ClientBase } from "./base.ts";
+import askEmber from "./askEmber.ts";
+import getApiKey from "./getApiKey.ts";
 
 const twitterPostTemplate = `
 # Areas of Expertise
@@ -18,7 +20,6 @@ const twitterPostTemplate = `
 # About {{agentName}} (@{{twitterUserName}}):
 {{bio}}
 {{lore}}
-{{topics}}
 
 {{providers}}
 
@@ -120,6 +121,31 @@ export class TwitterPostClient {
         this.runtime = runtime;
     }
 
+    private async selectTopic() {
+        const topicsWithWeights = [
+            { topic: "token analysis", weight: 2 },
+            { topic: "crypto news", weight: 0 },
+            { topic: "market wisdom", weight: 0 }
+        ];
+
+        const totalWeight = topicsWithWeights.reduce((sum, item) => sum + item.weight, 0);
+        let random = Math.random() * totalWeight;
+
+        for (const item of topicsWithWeights) {
+            if (random < item.weight) {
+                return item.topic;
+            }
+            random -= item.weight;
+        }
+
+        // Fallback in case of floating-point precision issues
+        return topicsWithWeights[0].topic;
+    }
+
+    private async getTokenAnalysis() {
+        return await askEmber(this.runtime.agentId, "Token analysis", getApiKey(this.runtime), "token_analysis_query");
+    }
+
     private async generateNewTweet() {
         elizaLogger.log("Generating new tweet");
 
@@ -134,36 +160,47 @@ export class TwitterPostClient {
                 "twitter"
             );
 
-            const topics = this.runtime.character.topics.join(", ");
-            const state = await this.runtime.composeState(
-                {
-                    userId: this.runtime.agentId,
-                    roomId: roomId,
-                    agentId: this.runtime.agentId,
-                    content: {
-                        text: topics,
-                        action: "",
-                    },
-                },
-                {
-                    twitterUserName: this.client.profile.username,
-                }
-            );
+            let newTweetContent = "";
+            switch (await this.selectTopic()) {
+                case "token analysis":
+                    newTweetContent = await this.getTokenAnalysis();
+                    break;
+                case "crypto news":
+                    break;
+                case "market wisdom":
+                    const state = await this.runtime.composeState(
+                        {
+                            userId: this.runtime.agentId,
+                            roomId: roomId,
+                            agentId: this.runtime.agentId,
+                            content: {
+                                text: "market wisdom",
+                                action: "",
+                            },
+                        },
+                        {
+                            twitterUserName: this.client.profile.username,
+                        }
+                    );
 
-            const context = composeContext({
-                state,
-                template:
-                    this.runtime.character.templates?.twitterPostTemplate ||
-                    twitterPostTemplate,
-            });
+                    const context = composeContext({
+                        state,
+                        template:
+                            this.runtime.character.templates?.twitterPostTemplate ||
+                            twitterPostTemplate,
+                    });
 
-            elizaLogger.debug("generate post prompt:\n" + context);
+                    elizaLogger.debug("generate post prompt:\n" + context);
 
-            const newTweetContent = await generateText({
-                runtime: this.runtime,
-                context,
-                modelClass: ModelClass.SMALL,
-            });
+                    newTweetContent = await generateText({
+                        runtime: this.runtime,
+                        context,
+                        modelClass: ModelClass.SMALL,
+                    });
+                    break;
+            }
+
+            /*  */
 
             // Replace \n with proper line breaks and trim excess spaces
             const formattedTweet = newTweetContent
