@@ -144,7 +144,10 @@ export class TwitterPostClient {
 
     private async getTokenAnalysis() {
         const agentId = this.runtime.agentId;
-        return await askEmber(agentId, "Tech analysis", this.runtime, "token_analysis_query");
+        const emberResponse = await askEmber(agentId, "Tech analysis", this.runtime, "token_analysis_query");
+        // Truncate everything after two newlines and "╭─"
+        const truncatedResponse = emberResponse.split(/\n\n|\n?╭─/)[0];
+        return truncatedResponse;
     }
 
     private async generateNewTweet() {
