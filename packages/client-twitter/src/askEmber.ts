@@ -28,7 +28,12 @@ export default async function (
     const apiKey = runtime.getSetting("EMBERAI_API_KEY");
     const apiUrl = runtime.getSetting("EMBERAI_API_URL");
 
-    elizaLogger.log("Asking Ember", { senderUid, message, apiKey });
+    elizaLogger.log("Asking Ember", {
+        senderUid,
+        message,
+        apiUrl,
+        apiKey,
+    });
 
     const response = await fetch(`https://${apiUrl}/v1/chat`, {
         method: "POST",
